@@ -31,18 +31,33 @@ exports.createMovie  = async (req, res) => {
 };
 
 exports.getSessions = async (req, res) => {
-
     try {
+        const moviesData = await pool.query('SELECT * FROM movies');
 
-        const sessions = await pool.query(
+        const sessionsData = await pool.query(
             'SELECT s.*, m.title AS movie_title FROM sessions s JOIN movies m ON s.movie_id = m.movie_id'
         );
 
-        res.json({ sessions: sessions.rows });
+        const data = moviesData.rows.map(movie => {
+            const movieSessions = sessionsData.rows.filter(session => session.movie_id === movie.movie_id)
+                .map(session => ({
+                    start_time: session.start_time,
+                    date: session.date
+                }));
+
+            return {
+                movie_title: movie.title,
+                sessions: movieSessions
+            };
+        });
+
+        res.json({ sessions: data });
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        console.log('Ошибка при получении данных из базы данных: ' + error.message);
+        res.status(500).json({ error: 'Произошла ошибка при получении данных из базы данных.' });
     }
 };
+
 
 exports.createSession = async (req, res) => {
 
