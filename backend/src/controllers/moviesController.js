@@ -41,6 +41,7 @@ exports.getSessions = async (req, res) => {
         const data = moviesData.rows.map(movie => {
             const movieSessions = sessionsData.rows.filter(session => session.movie_id === movie.movie_id)
                 .map(session => ({
+                    session_id: session.session_id,
                     start_time: session.start_time,
                     date: session.date
                 }));
@@ -69,16 +70,24 @@ exports.createSession = async (req, res) => {
             [movie_title]
         );
 
+
         if (movieQuery.rows.length === 0) {
             return res.status(404).send('Фильм не найден');
         }
 
         const movie_id = movieQuery.rows[0].movie_id;
-
-        await pool.query(
-            'INSERT INTO sessions (movie_id, start_time, date) VALUES ($1, $2, $3) RETURNING *',
+        const newSession = await pool.query(
+            'INSERT INTO sessions (movie_id, start_time, date) VALUES ($1, $2, $3) RETURNING session_id',
             [movie_id, start_time, date]
         );
+        const session_id = newSession.rows[0].session_id;
+
+        for (let i = 1; i <= 119; i++) {
+            await pool.query(
+                'INSERT INTO seats (session_id, seat_number, is_booked) VALUES ($1, $2, $3)',
+                [session_id, i, false]
+            );
+        }
 
         res.status(201).send(`Сеанс фильма ${movie_title} успешно добавлен`);
     } catch (error) {
